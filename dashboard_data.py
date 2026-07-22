@@ -21,21 +21,22 @@ SOURCE_TARGETS = [
 ]
 EXCLUDE_TABS = {'백필_진행상황'}
 
-TITLE_COLUMNS = ['대표품목명','공고명','입찰공고명','입찰공고명칭','입찰명','사업명','품명','계약명','수요품명','구매품명','용역명','건명','공고건명','bidNm','bidNtceNm','itemNm','cntrctNm','prcurePlanNm']
-AGENCY_COLUMNS = ['발주기관','발주기관명','수요기관','수요기관명','수요부대','기관명','공고기관명','공고게시기관명','ornt','dminsttNm','orderInsttNm','ntceInsttNm']
+TITLE_COLUMNS = ['bidNtceNm','cntrctNm','prcurePlanNm','대표품목명','입찰공고명','입찰공고명칭','공고명','입찰명','계약명','사업명','품명','수요품명','구매품명','용역명','건명','공고건명','bidNm','itemNm']
+AGENCY_COLUMNS = ['수요기관명','dminsttNm','dmndInsttNm','수요기관','발주기관명','발주기관','계약기관명','기관명','수요부대','공고기관명','공고게시기관명','ornt','orderInsttNm','ntceInsttNm']
 COMPANY_COLUMNS = ['업체명','계약업체명','계약상대자','계약상대자명','계약업체','낙찰업체명','낙찰자명','업체상호','상호','업체','cntrctEntrpsNm','cntrctCorpNm','cntrctCompanyNm','sucsfbidEntrpsNm','corpNm','companyNm']
 STATUS_COLUMNS = ['진행상태','계약상태','공고구분','pblancSe','bidNtceSttusNm','ntceKindNm']
-DATE_COLUMNS = ['공고일자','입찰공고일자','공고게시일자','공고일시','계약일자','계약일','발주예정월','등록일자','작성일자','bidNtceDt','bidNtceDate','pblancDate','cntrctDate','cntrctCnclsDate','orderPrearngeMt','rgstDt']
+DATE_COLUMNS = ['공고일자','입찰공고일자','공고게시일자','공고일시','계약체결일','계약일자','계약일','발주예정월','등록일자','작성일자','bidNtceDt','bidNtceDate','pblancDate','cntrctDate','cntrctCnclsDate','orderPrearngeMt','rgstDt']
 PLAN_MONTH_COLUMNS = ['공고예정월','발주예정월','orderPrearngeMt','bidNtcePlanMt','pblancPrearngeMt']
 DEADLINE_COLUMNS = ['입찰서제출마감일시','입찰서마감일시','입찰마감일시','입찰참가등록마감일시','개찰일시','bidClseDt','bidClseDate','biddocPresentnClosDt','bidPartcptRegistClosDt','opengDt']
 END_DATE_COLUMNS = ['계약종료일','계약종료일자','계약만료일','완료예정일','종료예정일','cntrctEndDate','cntrctEndDt','completionPrearngeDate','finishDate']
-METHOD_COLUMNS = ['계약방법','계약체결방법','계약방식','cntrctMth','cntrctCnclsMthdNm','bidMethdNm']
+METHOD_COLUMNS = ['계약방법','계약체결방법','계약방식','cntrctMth','cntrctMthdNm','cntrctCnclsMthdNm','bidMethdNm']
 URL_COLUMNS = ['바로가기','상세URL','계약상세URL','공고상세URL','bidNtceDtlUrl','cntrctDtlInfoUrl','detailUrl','url']
-IDENTIFIER_COLUMNS = ['G2B공고번호','공고번호','공고차수','계약번호','판단번호','사업번호','g2bPblancNo','pblancNo','pblancOdr','cntrctNo','dcsNo','bidNtceNo']
+IDENTIFIER_COLUMNS = ['G2B공고번호','공고번호','공고차수','계약번호','통합계약번호','판단번호','사업번호','g2bPblancNo','pblancNo','pblancOdr','cntrctNo','untyCntrctNo','dcsNo','bidNtceNo']
 AMOUNT_COLUMNS = {
     '발주계획':['예산금액','추정금액','사업금액','예정금액','budgetAmount','orderPlanAmount','asignBdgtAmt'],
     '공고':['기초예비가격','기초예가','추정가격','배정예산','예정가격','예산금액','bdgtAmt','bsicExpt','bsisPrdprc','presmptPrce','asignBdgtAmt'],
-    '계약정보':['계약금액','계약금액(원)','총계약금액','총계약금액(원)','계약총액','계약액','최종계약금액','낙찰금액','cntrctAmnt','cntrctAmt','cntrctAmount','totCntrctAmt','totalCntrctAmt','sucsfbidAmt'],
+    # 표출 기준: thtmCntrctAmt(금차계약금액) 우선, 0/공백이면 totCntrctAmt(총계약금액)
+    '계약정보':['금차계약금액','금차계약금액(원)','thtmCntrctAmt','총계약금액','총계약금액(원)','totCntrctAmt','totalCntrctAmt','계약금액','계약금액(원)','계약총액','계약액','최종계약금액','낙찰금액','cntrctAmnt','cntrctAmt','cntrctAmount','sucsfbidAmt'],
 }
 
 RENTAL = ['임차','렌탈','리스','대여']
@@ -68,14 +69,29 @@ def title_of(row):
     return '(제목 없음)'
 
 def amount_of(row, source):
+    # 계약정보는 금차계약금액을 우선 표출하고, 0/공백일 때만 총계약금액을 사용합니다.
+    if source == '계약정보':
+        current_amount = 0
+        for c in ('금차계약금액', '금차계약금액(원)', 'thtmCntrctAmt', 'currentCntrctAmt'):
+            current_amount = number(row.get(c))
+            if current_amount > 0:
+                return current_amount
+
+        for c in ('총계약금액', '총계약금액(원)', 'totCntrctAmt', 'totalCntrctAmt'):
+            total_amount = number(row.get(c))
+            if total_amount > 0:
+                return total_amount
+
     for c in AMOUNT_COLUMNS[source]:
         n = number(row.get(c))
-        if n > 0: return n
+        if n > 0:
+            return n
     for k, v in row.items():
         key = str(k).replace(' ','').lower()
         if any(x in key for x in ('금액','가격','예가','예산','amount','price','amnt')) and '단가' not in key:
             n = number(v)
-            if n > 0: return n
+            if n > 0:
+                return n
     return 0
 
 def date_from(row, columns, min_len=6):
@@ -86,13 +102,14 @@ def date_from(row, columns, min_len=6):
     return ''
 
 def category(title):
-    compact = title.replace(' ','')
-    if any(k.replace(' ','') in compact for k in CORE):
-        return '장비임차' if any(k in title for k in RENTAL) else '장비구매'
-    if any(k in title for k in ACCESSORY): return '부속·비품'
-    if any(k in title for k in MAINT): return '유지보수'
-    if any(k in title for k in SERVICE): return '폐기물처리용역'
-    if any(k in title for k in RENTAL): return '기타임차'
+    compact = str(title or '').replace(' ', '')
+    if any(k.replace(' ', '') in compact for k in CORE):
+        return '장비'
+    if any(k.replace(' ', '') in compact for k in SERVICE):
+        return '처리용역'
+    # 임차/유지보수/부속품도 음식물처리 장비 운영과 직접 관련된 경우 장비로 분류
+    if any(k.replace(' ', '') in compact for k in RENTAL + MAINT + ACCESSORY):
+        return '장비'
     return '기타음식물'
 
 def is_open(source, deadline, status):
@@ -136,7 +153,7 @@ def scan(client, target):
             rows.append({
                 'market': market, 'kind': target.get('kind',''), 'source': source,
                 'title': title, 'agency': agency, 'company': first(raw, COMPANY_COLUMNS),
-                'amount': amount, 'category': category(title), 'status': status,
+                'amount': amount, 'category': category(' '.join(str(v) for v in raw.values() if v)), 'status': status,
                 'date': date, 'plan_month': plan_month or date[:6], 'deadline': deadline,
                 'end_date': end_date, 'method': first(raw, METHOD_COLUMNS),
                 'url': first(raw, URL_COLUMNS), 'open': is_open(source, deadline, status),

@@ -3,7 +3,7 @@ name: Update dashboard data
 on:
   workflow_dispatch:
   schedule:
-    - cron: '0 22 * * *' # 매일 한국시간 오전 7시
+    - cron: '0 23 * * *' # 매일 한국시간 오전 8시
 
 permissions:
   contents: write

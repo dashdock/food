@@ -2,4 +2,6 @@ __pycache__/
 *.py[cod]
 .env
 *.json
+
+!docs/data.json
 !docs/data/*.json

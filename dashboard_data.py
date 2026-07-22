@@ -21,13 +21,13 @@ SOURCE_TARGETS = [
 ]
 EXCLUDE_TABS = {'백필_진행상황'}
 
-TITLE_COLUMNS = ['대표품목명','공고명','입찰공고명','입찰명','사업명','품명','계약명','수요품명','구매품명','용역명','건명','bidNm','itemNm','cntrctNm','prcurePlanNm']
-AGENCY_COLUMNS = ['발주기관','수요기관','수요부대','기관명','ornt','dminsttNm','orderInsttNm']
+TITLE_COLUMNS = ['대표품목명','공고명','입찰공고명','입찰공고명칭','입찰명','사업명','품명','계약명','수요품명','구매품명','용역명','건명','공고건명','bidNm','bidNtceNm','itemNm','cntrctNm','prcurePlanNm']
+AGENCY_COLUMNS = ['발주기관','발주기관명','수요기관','수요기관명','수요부대','기관명','공고기관명','공고게시기관명','ornt','dminsttNm','orderInsttNm','ntceInsttNm']
 COMPANY_COLUMNS = ['업체명','계약업체명','계약상대자','계약상대자명','계약업체','낙찰업체명','낙찰자명','업체상호','상호','업체','cntrctEntrpsNm','cntrctCorpNm','cntrctCompanyNm','sucsfbidEntrpsNm','corpNm','companyNm']
 STATUS_COLUMNS = ['진행상태','계약상태','공고구분','pblancSe','bidNtceSttusNm','ntceKindNm']
-DATE_COLUMNS = ['공고일자','계약일자','계약일','발주예정월','등록일자','작성일자','bidNtceDt','pblancDate','cntrctDate','cntrctCnclsDate','orderPrearngeMt','rgstDt']
+DATE_COLUMNS = ['공고일자','입찰공고일자','공고게시일자','공고일시','계약일자','계약일','발주예정월','등록일자','작성일자','bidNtceDt','bidNtceDate','pblancDate','cntrctDate','cntrctCnclsDate','orderPrearngeMt','rgstDt']
 PLAN_MONTH_COLUMNS = ['공고예정월','발주예정월','orderPrearngeMt','bidNtcePlanMt','pblancPrearngeMt']
-DEADLINE_COLUMNS = ['입찰서제출마감일시','입찰참가등록마감일시','개찰일시','bidClseDt','biddocPresentnClosDt','bidPartcptRegistClosDt','opengDt']
+DEADLINE_COLUMNS = ['입찰서제출마감일시','입찰서마감일시','입찰마감일시','입찰참가등록마감일시','개찰일시','bidClseDt','bidClseDate','biddocPresentnClosDt','bidPartcptRegistClosDt','opengDt']
 END_DATE_COLUMNS = ['계약종료일','계약종료일자','계약만료일','완료예정일','종료예정일','cntrctEndDate','cntrctEndDt','completionPrearngeDate','finishDate']
 METHOD_COLUMNS = ['계약방법','계약체결방법','계약방식','cntrctMth','cntrctCnclsMthdNm','bidMethdNm']
 URL_COLUMNS = ['바로가기','상세URL','계약상세URL','공고상세URL','bidNtceDtlUrl','cntrctDtlInfoUrl','detailUrl','url']
@@ -113,8 +113,16 @@ def scan(client, target):
         if ws.title in EXCLUDE_TABS: continue
         vals = ws.get_all_values()
         if len(vals) < 2: continue
-        hdr = vals[0]
-        for vr in vals[1:]:
+        known_headers = set(TITLE_COLUMNS + AGENCY_COLUMNS + COMPANY_COLUMNS + DATE_COLUMNS + DEADLINE_COLUMNS + METHOD_COLUMNS + URL_COLUMNS + IDENTIFIER_COLUMNS)
+        header_idx = 0
+        best_score = -1
+        for i, candidate in enumerate(vals[:20]):
+            score = sum(1 for cell in candidate if str(cell).strip() in known_headers)
+            if score > best_score:
+                best_score = score
+                header_idx = i
+        hdr = [str(v).strip() for v in vals[header_idx]]
+        for vr in vals[header_idx + 1:]:
             if not any(vr) or not any(KEYWORD in str(v) for v in vr if v): continue
             raw = dict(zip(hdr, vr))
             title = title_of(raw); agency = first(raw, AGENCY_COLUMNS); amount = amount_of(raw, source)

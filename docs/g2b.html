@@ -4,7 +4,7 @@
 </style></head><body><main class="shell">
 <nav class="market-nav"><a class="market-btn" data-market="군수품" href="military.html">군수품</a><a class="market-btn" data-market="나라장터" href="g2b.html">나라장터</a></nav>
 <header class="header"><h1 id="pageTitle">나라장터 음식물 조달</h1><div class="meta" id="updated">데이터 불러오는 중...</div></header>
-<section class="controls"><select id="year" class="year"></select><div class="seg"><button class="chip active" data-view="equipment">장비</button><button class="chip" data-view="service">처리용역</button><button class="chip" data-view="all">전체</button></div></section>
+<section class="controls"><select id="year" class="year"></select><div class="seg"><button class="chip active" data-view="equipment">장비</button><button class="chip" data-view="service">처리용역</button><button class="chip" data-view="other">기타음식물</button><button class="chip" data-view="all">전체</button></div></section>
 <nav class="stage-nav"><button class="stage-btn active" data-source="공고">공고</button><button class="stage-btn" data-source="계약정보">계약정보</button></nav>
 <div class="summary-title">요약</div><section class="cards" id="cards"></section>
 <section class="panel"><div class="panel-head"><div><h2 id="listTitle">세부 내역</h2><p id="listSub">최근순으로 표시합니다.</p></div><input id="search" class="search" placeholder="사업명, 기관, 업체명 검색"></div><div class="table-wrap"><table class="table"><thead id="thead"></thead><tbody id="tbody"></tbody></table></div></section>
@@ -16,7 +16,7 @@ let DATA={records:[],years:[]};let state={sortKey:'date',sortDir:'desc',market:F
 const esc=s=>String(s??'').replace(/[&<>"']/g,m=>({'&':'&amp;','<':'&lt;','>':'&gt;','"':'&quot;',"'":'&#39;'}[m]));
 const won=n=>{n=Number(n)||0;if(!n)return '-';if(n>=1e8)return (n/1e8).toLocaleString('ko-KR',{maximumFractionDigits:1})+'억원';if(n>=1e4)return Math.round(n/1e4).toLocaleString()+'만원';return n.toLocaleString()+'원'};
 const fmt=d=>{d=String(d||'');if(d.length>=8)return `${d.slice(0,4)}.${d.slice(4,6)}.${d.slice(6,8)}`;if(d.length>=6)return `${d.slice(0,4)}.${d.slice(4,6)}`;return '-'};
-function viewMatch(r){if(state.view==='all')return true;if(state.view==='service')return r.category==='폐기물처리용역';return ['장비구매','장비임차','부속·비품','유지보수'].includes(r.category)}
+function viewMatch(r){if(state.view==='all')return true;if(state.view==='service')return r.category==='처리용역';if(state.view==='other')return r.category==='기타음식물';return r.category==='장비'}
 function records(){return DATA.records.filter(r=>r.market===state.market&&r.source===state.source&&viewMatch(r)&&((r.date||r.plan_month||'').slice(0,4)===state.year)&&(!state.q||[r.title,r.agency,r.company].join(' ').toLowerCase().includes(state.q)))}
 function setUrl(){const p=new URLSearchParams({source:state.source,view:state.view,year:state.year});history.replaceState(null,'','?'+p.toString())}
 function monthKey(){return `${now.getFullYear()}${String(now.getMonth()+1).padStart(2,'0')}`}

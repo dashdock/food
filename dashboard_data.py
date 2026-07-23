@@ -496,34 +496,38 @@ def date_from(row, columns, min_len=6):
 
 
 def category(row, title):
-    values = [title]
-
-    for value in row.values():
-        if value not in (None, ""):
-            values.append(str(value))
-
-    text = " ".join(values).lower()
+    # 분류는 다른 컬럼의 "용역" 같은 값에 오염되지 않도록 사업명/공고명/계약명 중심으로 판단한다.
+    text = str(title or "").lower().strip()
     compact = re.sub(r"\s+", "", text)
 
-    # 장비 임차·임대·대여는 계약 형식이 용역이어도 장비로 분류한다.
-    if any(
-        term.lower() in text
-        or re.sub(r"\s+", "", term.lower()) in compact
-        for term in EQUIPMENT_LEASE_TERMS
-    ):
+    # 장비 임차·임대·대여·렌탈은 뒤에 "용역"이 붙어도 장비로 분류한다.
+    # 예: 음식물쓰레기 처리기기 임차용역, 처리기(건조기)임차용역, 임차장비 용역
+    equipment_nouns = [
+        "음식물처리기", "음식물쓰레기처리기", "음식물류폐기물처리기",
+        "처리기기", "처리기", "건조기", "감량기", "감량장비",
+        "처리장비", "처리설비", "장비", "기기",
+    ]
+    lease_words = ["임차", "임대", "대여", "렌탈"]
+
+    has_equipment_lease = any(
+        (noun in compact and lease in compact)
+        for noun in equipment_nouns
+        for lease in lease_words
+    )
+
+    if has_equipment_lease:
         return "장비"
 
-    # 수거·운반·폐기·위탁처리 등 실제 음식물 처리 업무만 처리용역으로 분류한다.
+    # 실제 수거·운반·폐기·위탁처리 업무만 처리용역으로 분류한다.
     if any(
-        term.lower() in text
-        or re.sub(r"\s+", "", term.lower()) in compact
+        re.sub(r"\s+", "", term.lower()) in compact
         for term in SERVICE_TERMS
     ):
         return "처리용역"
 
+    # 장비 구매·설치·제조·교체 등
     if any(
-        term.lower() in text
-        or re.sub(r"\s+", "", term.lower()) in compact
+        re.sub(r"\s+", "", term.lower()) in compact
         for term in EQUIPMENT_TERMS
     ):
         return "장비"

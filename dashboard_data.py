@@ -136,6 +136,7 @@ STATUS_COLUMNS = [
     "진행상태",
     "계약상태",
     "공고구분",
+    "bidNtceTypeNm",
     "pblancSe",
     "bidNtceSttusNm",
     "ntceKindNm",
@@ -144,6 +145,16 @@ STATUS_COLUMNS = [
 
 DATE_COLUMNS = [
     "공고일자",
+    "공고일",
+    "입찰공고일",
+    "입찰공고일자",
+    "입찰공고일시",
+    "공고게시일",
+    "공고게시일자",
+    "공고게시일시",
+    "게시일자",
+    "게시일시",
+    "ntceDt",
     "계약체결일",
     "계약체결일자",
     "계약일자",
@@ -333,6 +344,26 @@ SERVICE_TERMS = [
 ]
 
 
+EQUIPMENT_LEASE_TERMS = [
+    "장비임차",
+    "장비 임차",
+    "임차장비",
+    "임차 장비",
+    "장비임대",
+    "장비 임대",
+    "장비대여",
+    "장비 대여",
+    "처리기임차",
+    "처리기 임차",
+    "처리기임대",
+    "처리기 임대",
+    "처리기대여",
+    "처리기 대여",
+    "렌탈장비",
+    "렌탈 장비",
+]
+
+
 EQUIPMENT_TERMS = [
     "음식물처리기",
     "음식물쓰레기처리기",
@@ -474,9 +505,15 @@ def category(row, title):
     text = " ".join(values).lower()
     compact = re.sub(r"\s+", "", text)
 
-    # 처리용역 키워드를 장비보다 반드시 먼저 검사한다.
-    # 공백이 포함된 원문과 공백 제거 문자열을 모두 검사하여
-    # "음식물쓰레기 처리 용역"이 처리기 때문에 장비로 오분류되지 않게 한다.
+    # 장비 임차·임대·대여는 계약 형식이 용역이어도 장비로 분류한다.
+    if any(
+        term.lower() in text
+        or re.sub(r"\s+", "", term.lower()) in compact
+        for term in EQUIPMENT_LEASE_TERMS
+    ):
+        return "장비"
+
+    # 수거·운반·폐기·위탁처리 등 실제 음식물 처리 업무만 처리용역으로 분류한다.
     if any(
         term.lower() in text
         or re.sub(r"\s+", "", term.lower()) in compact
@@ -608,6 +645,12 @@ def scan(client, target):
                 DEADLINE_COLUMNS,
                 8,
             )
+
+            # 일부 군수품 공고 시트는 공고일이 비어 있거나 컬럼명이 다르다.
+            # 이 경우 연도 필터에서 누락되지 않도록 입찰 마감일을 기준일로 보완한다.
+            if source == "공고" and not date and deadline:
+                date = deadline[:8]
+
             end_date = date_from(
                 raw,
                 END_DATE_COLUMNS,
@@ -618,6 +661,17 @@ def scan(client, target):
                 first(raw, STATUS_COLUMNS)
                 or "미상"
             )
+
+            # 공고 목록의 공고구분(V열)에 "취소"가 포함된 행은 제외한다.
+            # 컬럼명이 API 필드명으로 들어오는 경우도 함께 처리한다.
+            notice_type = str(
+                raw.get("공고구분")
+                or raw.get("bidNtceTypeNm")
+                or status
+                or ""
+            ).strip()
+            if source == "공고" and "취소" in notice_type:
+                continue
 
             key = dedupe(
                 raw,

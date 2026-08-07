@@ -398,6 +398,21 @@ EQUIPMENT_TERMS = [
 ]
 
 
+# 정비·유지보수·위탁관리 성격의 용역은 장비 구매도, 수거·처리 용역도 아니므로
+# "기타음식물"로 분류한다. (예: "처리기 정비 용역", "처리기 정비 위탁관리 용역")
+MAINTENANCE_TERMS = [
+    "정비",
+    "정비용역",
+    "정비 용역",
+    "위탁관리",
+    "위탁 관리",
+    "유지보수",
+    "유지 보수",
+    "보수용역",
+    "보수 용역",
+]
+
+
 
 def first(row, columns):
     for column in columns:
@@ -500,7 +515,7 @@ def category(row, title):
     text = str(title or "").lower().strip()
     compact = re.sub(r"\s+", "", text)
 
-    # 장비 임차·임대·대여·렌탈은 뒤에 "용역"이 붙어도 장비로 분류한다.
+    # 1) 장비 임차·임대·대여·렌탈은 뒤에 "용역"이 붙어도 장비로 분류한다.
     # 예: 음식물쓰레기 처리기기 임차용역, 처리기(건조기)임차용역, 임차장비 용역
     equipment_nouns = [
         "음식물처리기", "음식물쓰레기처리기", "음식물류폐기물처리기",
@@ -518,14 +533,26 @@ def category(row, title):
     if has_equipment_lease:
         return "장비"
 
-    # 실제 수거·운반·폐기·위탁처리 업무만 처리용역으로 분류한다.
+    # 2) 정비·위탁관리·유지보수 성격의 용역은 구매도 처리용역도 아니므로
+    # 기타음식물로 분류한다.
+    # 예: "처리기 정비 용역", "처리기 정비 위탁관리 용역"
     if any(
         re.sub(r"\s+", "", term.lower()) in compact
-        for term in SERVICE_TERMS
+        for term in MAINTENANCE_TERMS
     ):
+        return "기타음식물"
+
+    # 3) 실제 수거·운반·폐기·위탁처리 업무만 처리용역으로 분류한다.
+    # "처리기"처럼 뒤에 "기"가 붙어 장비 명사가 되는 경우는 서비스로 오분류하지
+    # 않도록 negative lookahead로 제외한다. (예: "음식물쓰레기처리기" != "음식물쓰레기처리" + 용역)
+    def service_match(term):
+        pattern = re.escape(re.sub(r"\s+", "", term.lower())) + r"(?!기)"
+        return re.search(pattern, compact) is not None
+
+    if any(service_match(term) for term in SERVICE_TERMS):
         return "처리용역"
 
-    # 장비 구매·설치·제조·교체 등
+    # 4) 장비 구매·설치·제조·교체 등
     if any(
         re.sub(r"\s+", "", term.lower()) in compact
         for term in EQUIPMENT_TERMS
